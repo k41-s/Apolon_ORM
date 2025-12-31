@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data.SqlTypes;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿
 using Apolon.Core.Attributes;
 
 namespace Apolon.Core.Models
@@ -15,13 +10,13 @@ namespace Apolon.Core.Models
         public int Id { get; set; }
 
         [Column("first_name", IsNullable = false)]
-        public string FirstName { get; set; }
+        public string FirstName { get; set; } = string.Empty;
 
         [Column("last_name", IsNullable = false)]
-        public string LastName { get; set; }
+        public string LastName { get; set; } = string.Empty;
 
         [Column("oib")]
-        public string OIB { get; set; }
+        public string OIB { get; set; } = string.Empty;
 
         [Column("date_of_birth", IsNullable = false)]
         public DateTime DateOfBirth { get; set; }
