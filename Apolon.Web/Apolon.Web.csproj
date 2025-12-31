@@ -4,6 +4,11 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>bd632119-c1d2-431d-929a-a53a5316f3af</UserSecretsId>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Apolon.Core\Apolon.Core.csproj" />
+  </ItemGroup>
 
 </Project>
