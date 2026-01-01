@@ -18,7 +18,7 @@ namespace Apolon.Core.Models
         public DateTime Date { get; set; }
 
         [Column("type", IsNullable = false)]
-        public string Type { get; set; } = string.Empty;
+        public string CheckupType { get; set; } = string.Empty;
 
         [Column("finding")]
         public string? Finding { get; set; }

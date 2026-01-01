@@ -1,9 +1,6 @@
 ﻿
 using System.Reflection;
 using Apolon.Core.Attributes;
-{
-    
-}
 
 namespace Apolon.Core.ORM
 {
@@ -45,6 +42,20 @@ namespace Apolon.Core.ORM
 
             _cache[type] = metadata;
             return metadata;
+        }
+
+        public static ModelMetadata GetMetadata(Type type)
+        {
+            var method = typeof(ModelParser)
+                .GetMethod(nameof(GetMetadata), new Type[] { })?.MakeGenericMethod(type);
+
+            if (method == null)
+            {
+                throw new InvalidOperationException(
+                    $"Could not find generic GetMetadata method for type {type.Name}.");
+            }
+
+            return (ModelMetadata)method.Invoke(null, null)!;
         }
 
         private static PropertyMetadata? ProcessProperty(PropertyInfo prop)
