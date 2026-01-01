@@ -4,10 +4,9 @@ using System.Data;
 
 namespace Apolon.Core.ORM
 {
-    public class DatabaseService : IDisposable
+    public class DatabaseService
     {
         private readonly string _connectionString;
-        private NpgsqlConnection? _connection;
 
         public DatabaseService(IConfiguration configuration)
         {
@@ -19,18 +18,11 @@ namespace Apolon.Core.ORM
             _connectionString = connStr;
         }
 
-        private async Task<NpgsqlConnection> GetOpenConnectionAsync()
+        public async Task<NpgsqlConnection> GetNewOpenConnectionAsync()
         {
-            if (_connection == null)
-            {
-                _connection = new NpgsqlConnection(_connectionString);
-            }
-
-            if (_connection.State != ConnectionState.Open)
-            {
-                await _connection.OpenAsync();
-            }
-            return _connection;
+            var connection = new NpgsqlConnection(_connectionString);
+            await connection.OpenAsync();
+            return connection;
         }
 
         public async Task ExecuteDdlAsync(string sql)
@@ -39,8 +31,7 @@ namespace Apolon.Core.ORM
 
             Console.WriteLine($"\n--- Executing DDL ---\n{sql}\n---------------------");
 
-            var connection = await GetOpenConnectionAsync();
-
+            await using (var connection = await GetNewOpenConnectionAsync())
             using (var command = new NpgsqlCommand(sql, connection))
             {
                 try
@@ -82,14 +73,7 @@ namespace Apolon.Core.ORM
                 await ExecuteDdlAsync(sql);
             }
 
-            _connection?.Close();
-
             Console.WriteLine("\n--- Database Schema Initialization Complete! ---");
-        }
-
-        public void Dispose()
-        {
-            _connection?.Dispose();
         }
     }
 }
