@@ -1,7 +1,5 @@
 ﻿using Npgsql;
 using System.Data;
-using System.Reflection;
-using System.Linq;
 
 namespace Apolon.Core.ORM.Data
 {
@@ -173,6 +171,49 @@ namespace Apolon.Core.ORM.Data
             }
 
             return default;
+        }
+
+        public async Task<IEnumerable<T>> GetAsync(
+            string? whereClause = null, 
+            object? queryParams = null, 
+            string? orderBy = null)
+        {
+            var results = new List<T>();
+
+            var columnList = string.Join(", ", _metadata.Properties.Select(p => p.ColumnName));
+            var sql = $"SELECT {columnList} FROM {_metadata.TableName}";
+
+            if (!string.IsNullOrWhiteSpace(whereClause))
+            {
+                sql += $" WHERE {whereClause}";
+            }
+
+            if (!string.IsNullOrWhiteSpace(orderBy))
+            {
+                sql += $" ORDER BY {orderBy}";
+            }
+
+            await using var connection = await _dbService.GetNewOpenConnectionAsync();
+            await using var command = new NpgsqlCommand(sql, connection);
+
+            if (queryParams != null)
+            {
+                var properties = queryParams.GetType().GetProperties();
+                foreach (var prop in properties)
+                {
+                    var value = prop.GetValue(queryParams);
+                    command.Parameters.AddWithValue($"@{prop.Name}", value ?? DBNull.Value);
+                }
+            }
+
+            await using var reader = await command.ExecuteReaderAsync();
+
+            while (await reader.ReadAsync())
+            {
+                results.Add(MapEntityFromReader(reader));
+            }
+
+            return results;
         }
     }
 }
