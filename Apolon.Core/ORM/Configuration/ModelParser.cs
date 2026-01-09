@@ -1,8 +1,9 @@
 ﻿
 using System.Reflection;
-using Apolon.Core.Attributes;
+using Apolon.Core.ORM.Configuration.Attributes;
+using Apolon.Core.ORM.Database;
 
-namespace Apolon.Core.ORM
+namespace Apolon.Core.ORM.Configuration
 {
     public static class ModelParser
     {

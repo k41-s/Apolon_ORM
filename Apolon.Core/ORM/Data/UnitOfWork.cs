@@ -1,7 +1,7 @@
-﻿using Apolon.Core.ORM.Data;
+﻿using Apolon.Core.ORM.Database;
 using Npgsql;
 
-namespace Apolon.Core.ORM
+namespace Apolon.Core.ORM.Data
 {
     public class UnitOfWork : IUnitOfWork
     {

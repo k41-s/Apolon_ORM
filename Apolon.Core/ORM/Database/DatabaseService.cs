@@ -1,8 +1,9 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Apolon.Core.ORM.Configuration;
+using Microsoft.Extensions.Configuration;
 using Npgsql;
 using System.Data;
 
-namespace Apolon.Core.ORM
+namespace Apolon.Core.ORM.Database
 {
     public class DatabaseService
     {

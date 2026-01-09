@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data.SqlTypes;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Apolon.Core.Attributes;
+﻿
+using Apolon.Core.ORM.Configuration.Attributes;
 
 namespace Apolon.Core.Models
 {

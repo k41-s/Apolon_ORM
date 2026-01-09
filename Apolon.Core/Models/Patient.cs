@@ -1,5 +1,5 @@
 ﻿
-using Apolon.Core.Attributes;
+using Apolon.Core.ORM.Configuration.Attributes;
 
 namespace Apolon.Core.Models
 {

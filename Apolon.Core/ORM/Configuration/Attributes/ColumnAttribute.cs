@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Apolon.Core.Attributes
+namespace Apolon.Core.ORM.Configuration.Attributes
 {
     [AttributeUsage(AttributeTargets.Property)]
     public class ColumnAttribute : Attribute

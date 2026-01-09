@@ -1,7 +1,7 @@
-﻿
+﻿using Apolon.Core.ORM.Configuration;
 using System.Text;
 
-namespace Apolon.Core.ORM
+namespace Apolon.Core.ORM.Database
 {
     public static class PostgresDdlGenerator
     {

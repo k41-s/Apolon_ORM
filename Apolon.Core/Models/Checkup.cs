@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Data.SqlTypes;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Apolon.Core.Attributes;
+﻿using Apolon.Core.ORM.Configuration.Attributes;
+using Apolon.Core.Models.Enums;
 
 namespace Apolon.Core.Models
 {
@@ -18,7 +13,7 @@ namespace Apolon.Core.Models
         public DateTime Date { get; set; }
 
         [Column("type", IsNullable = false)]
-        public string CheckupType { get; set; } = string.Empty;
+        public CheckupType CheckupType { get; set; }
 
         [Column("finding")]
         public string? Finding { get; set; }

@@ -1,0 +1,74 @@
+﻿@{
+    ViewBag.Title = "ORM Unit of Work Test";
+}
+
+<div class="container mt-5">
+    <h1 class="display-4">@ViewBag.Title</h1>
+    <p class="lead">
+        This page demonstrates the custom ORM's transaction management.
+    </p>
+
+    <hr class="my-4">
+
+    @if (TempData["Status"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <strong>Result:</strong> @TempData["Status"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    @if (TempData["Error"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Error:</strong> @TempData["Error"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="row mt-4">
+
+        <div class="col-md-6">
+            <div class="card shadow-sm border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">1. Commit Test (Expected SUCCESS)</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-controller="UoWTest" asp-action="RunCommitTest" method="post">
+                        <p class="card-text">
+                            Runs two dependent operations (Insert Patient, Insert Prescription) and calls <code>CommitAsync()</code>.
+                        </p>
+                        <p class="text-muted small">
+                            <strong>Proof:</strong> If successful, check in the database that both records exist.
+                        </p>
+                        <button type="submit" class="btn btn-primary btn-lg mt-2">
+                            Execute Commit Transaction
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow-sm border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">2. Rollback Test (Expected FAILURE/ROLLBACK)</h5>
+                </div>
+                <div class="card-body">
+                    <form asp-controller="UoWTest" asp-action="RunRollbackTest" method="post">
+                        <p class="card-text">
+                            Runs a successful operation (Insert Patient), immediately throws a simulated error, and calls <code>RollbackAsync()</code>.
+                        </p>
+                        <p class="text-muted small">
+                            <strong>Proof:</strong> If successful, check in the database that the Patient record DOES NOT exist (it was rolled back).
+                        </p>
+                        <button type="submit" class="btn btn-warning btn-lg mt-2">
+                            Execute Rollback Transaction
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

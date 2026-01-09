@@ -1,11 +1,10 @@
-﻿using Apolon.Core.ORM.Data;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Apolon.Core.ORM
+namespace Apolon.Core.ORM.Data
 {
     public interface IUnitOfWork : IDisposable, IAsyncDisposable
     {

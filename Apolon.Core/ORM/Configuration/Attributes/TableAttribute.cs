@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Apolon.Core.Attributes
+namespace Apolon.Core.ORM.Configuration.Attributes
 {
     [AttributeUsage(AttributeTargets.Class)]
     public class TableAttribute : Attribute

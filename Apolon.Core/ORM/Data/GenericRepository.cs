@@ -1,4 +1,6 @@
-﻿using Npgsql;
+﻿using Apolon.Core.ORM.Configuration;
+using Apolon.Core.ORM.Database;
+using Npgsql;
 using System.Data;
 
 namespace Apolon.Core.ORM.Data
@@ -105,6 +107,18 @@ namespace Apolon.Core.ORM.Data
                     var propInfo = typeof(T).GetProperty(propMeta.PropertyName)!;
                     var value = propInfo.GetValue(entity);
 
+                    var paramValue = value;
+                    if (value != null)
+                    {
+                        var propType = propInfo.PropertyType;
+                        var underlyingType = Nullable.GetUnderlyingType(propType) ?? propType;
+
+                        if (underlyingType.IsEnum)
+                        {
+                            paramValue = value.ToString();
+                        }
+                    }
+
                     command.Parameters.AddWithValue($"@{propMeta.PropertyName}", value ?? DBNull.Value);
                 }
 
@@ -146,6 +160,18 @@ namespace Apolon.Core.ORM.Data
                 {
                     var propInfo = typeof(T).GetProperty(propMeta.PropertyName)!;
                     var value = propInfo.GetValue(entity);
+
+                    var paramValue = value;
+                    if (value != null)
+                    {
+                        var propType = propInfo.PropertyType;
+                        var underlyingType = Nullable.GetUnderlyingType(propType) ?? propType;
+
+                        if (underlyingType.IsEnum)
+                        {
+                            paramValue = value.ToString();
+                        }
+                    }
 
                     command.Parameters.AddWithValue($"@{propMeta.PropertyName}", value ?? DBNull.Value);
                 }

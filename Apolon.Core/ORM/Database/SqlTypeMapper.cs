@@ -1,5 +1,4 @@
-﻿
-namespace Apolon.Core.ORM
+﻿namespace Apolon.Core.ORM.Database
 {
     public static class SqlTypeMapper
     {
@@ -7,9 +6,13 @@ namespace Apolon.Core.ORM
         {
             Type? underlyingType = Nullable.GetUnderlyingType(cSharpType) ?? cSharpType;
 
+            if (underlyingType.IsEnum) return "VARCHAR(50)";
+
             return underlyingType switch
             {
                 var t when t == typeof(int) => "INT",
+                var t when t == typeof(long) => "BIGINT",
+                var t when t == typeof(Guid) => "UUID",
                 var t when t == typeof(decimal) => "DECIMAL",
                 var t when t == typeof(float) => "FLOAT",
                 var t when t == typeof(double) => "DOUBLE PRECISION",

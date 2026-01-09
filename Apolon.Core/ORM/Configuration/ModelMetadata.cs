@@ -1,5 +1,4 @@
-﻿
-namespace Apolon.Core.ORM
+﻿namespace Apolon.Core.ORM.Configuration
 {
     public class ModelMetadata
     {
