@@ -5,9 +5,12 @@ namespace Apolon.Core.ORM.Data
 {
     public class GenericRepository<T> : IGenericRepository<T> where T : new()
     {
-        private readonly DatabaseService _dbService;
+        private readonly DatabaseService? _dbService;
         private readonly ModelMetadata _metadata;
         private readonly PropertyMetadata _pk;
+
+        private readonly NpgsqlConnection? _externalConnection;
+        private readonly NpgsqlTransaction? _externalTransaction;
 
         public GenericRepository(DatabaseService dbService)
         {
@@ -17,6 +20,33 @@ namespace Apolon.Core.ORM.Data
             _pk = _metadata.Properties.FirstOrDefault(p => p.IsPrimaryKey)
                 ?? throw new InvalidOperationException(
                     $"Model {_metadata.TableName} has no primary key defined.");
+        }
+
+        // Unit of work mode
+        public GenericRepository(NpgsqlConnection connection, NpgsqlTransaction? transaction)
+        {
+            _externalConnection = connection;
+            _externalTransaction = transaction;
+            _dbService = null;
+
+            _metadata = ModelParser.GetMetadata<T>();
+            _pk = _metadata.Properties.FirstOrDefault(p => p.IsPrimaryKey)
+                ?? throw new InvalidOperationException($"Model {_metadata.TableName} has no primary key defined.");
+        }
+
+        private async Task<(NpgsqlConnection Connection, bool ShouldDispose)> GetConnectionAsync()
+        {
+            if (_externalConnection != null)
+            {
+                return (_externalConnection, false);
+            }
+
+            if (_dbService != null)
+            {
+                return (await _dbService.GetNewOpenConnectionAsync(), true);
+            }
+
+            throw new InvalidOperationException("Repository is not initialized correctly.");
         }
 
         private T MapEntityFromReader(NpgsqlDataReader reader)
@@ -65,28 +95,35 @@ namespace Apolon.Core.ORM.Data
 
             var sql = $"INSERT INTO {_metadata.TableName} ({columns}) VALUES ({parameters}) RETURNING {_pk.ColumnName}";
 
-            await using var connection = await _dbService.GetNewOpenConnectionAsync();
-            await using var command = new NpgsqlCommand(sql, connection);
-
-            foreach (var propMeta in insertableProps)
+            var (connection, shouldDispose) = await GetConnectionAsync();
+            try
             {
-                var propInfo = typeof(T).GetProperty(propMeta.PropertyName)!;
-                var value = propInfo.GetValue(entity);
+                await using var command = new NpgsqlCommand(sql, connection, _externalTransaction);
 
-                command.Parameters.AddWithValue($"@{propMeta.PropertyName}", value ?? DBNull.Value);
+                foreach (var propMeta in insertableProps)
+                {
+                    var propInfo = typeof(T).GetProperty(propMeta.PropertyName)!;
+                    var value = propInfo.GetValue(entity);
+
+                    command.Parameters.AddWithValue($"@{propMeta.PropertyName}", value ?? DBNull.Value);
+                }
+
+                var newId = await command.ExecuteScalarAsync();
+
+                if (newId != null)
+                {
+                    var pkPropInfo = typeof(T).GetProperty(_pk.PropertyName)!;
+                    var convertedId = Convert.ChangeType(newId, pkPropInfo.PropertyType);
+                    pkPropInfo.SetValue(entity, convertedId);
+                }
             }
-
-            var newId = await command.ExecuteScalarAsync();
-
-            if (newId != null)
+            finally
             {
-                var pkPropInfo = typeof(T).GetProperty(_pk.PropertyName)!;
-                var convertedId = Convert.ChangeType(newId, pkPropInfo.PropertyType);
-                pkPropInfo.SetValue(entity, convertedId);
+                if (shouldDispose) await connection.DisposeAsync();
             }
         }
 
-        public async Task Update(T entity)
+        public async Task UpdateAsync(T entity)
         {
             var updatableProps = _metadata.Properties
                 .Where(p => !p.IsPrimaryKey)
@@ -100,37 +137,51 @@ namespace Apolon.Core.ORM.Data
 
             var sql = $"UPDATE {_metadata.TableName} SET {setClauses} WHERE {_pk.ColumnName} = @{_pk.PropertyName}";
             
-            await using var connection = await _dbService.GetNewOpenConnectionAsync();
-            await using var command = new NpgsqlCommand(sql, connection);
-
-            foreach (var propMeta in updatableProps)
+            var (connection, shouldDispose) = await GetConnectionAsync();
+            try
             {
-                var propInfo = typeof(T).GetProperty(propMeta.PropertyName)!;
-                var value = propInfo.GetValue(entity);
+                await using var command = new NpgsqlCommand(sql, connection, _externalTransaction);
 
-                command.Parameters.AddWithValue($"@{propMeta.PropertyName}", value ?? DBNull.Value);
+                foreach (var propMeta in updatableProps)
+                {
+                    var propInfo = typeof(T).GetProperty(propMeta.PropertyName)!;
+                    var value = propInfo.GetValue(entity);
+
+                    command.Parameters.AddWithValue($"@{propMeta.PropertyName}", value ?? DBNull.Value);
+                }
+
+                var pkPropInfo = typeof(T).GetProperty(_pk.PropertyName)!;
+                var pkValue = pkPropInfo.GetValue(entity);
+
+                command.Parameters.AddWithValue(
+                    $"{_pk.PropertyName}",
+                    pkValue ?? throw new InvalidOperationException("Cannot update entity with a null primary key."));
+
+                await command.ExecuteNonQueryAsync();
             }
-
-            var pkPropInfo = typeof(T).GetProperty(_pk.PropertyName)!;
-            var pkValue = pkPropInfo.GetValue(entity);
-
-            command.Parameters.AddWithValue(
-                $"{_pk.PropertyName}", 
-                pkValue ?? throw new InvalidOperationException("Cannot update entity with a null primary key."));
-            
-            await command.ExecuteNonQueryAsync();
+            finally
+            {
+                if (shouldDispose) await connection.DisposeAsync();
+            }
         }
 
         public async Task DeleteAsync(object id)
         {
             var sql = $"DELETE FROM {_metadata.TableName} WHERE {_pk.ColumnName} = @id";
 
-            await using var connection = await _dbService.GetNewOpenConnectionAsync();
-            await using var command = new NpgsqlCommand(sql, connection);
+            var (connection, shouldDispose) = await GetConnectionAsync();
+            try
+            {
+                await using var command = new NpgsqlCommand(sql, connection, _externalTransaction);
 
-            command.Parameters.AddWithValue("id", id);
+                command.Parameters.AddWithValue("id", id);
 
-            await command.ExecuteNonQueryAsync();
+                await command.ExecuteNonQueryAsync();
+            }
+            finally
+            {
+                if (shouldDispose) await connection.DisposeAsync();
+            }
         }
 
         public async Task<IEnumerable<T>> GetAllAsync()
@@ -140,17 +191,18 @@ namespace Apolon.Core.ORM.Data
             var columnList = string.Join(", ", _metadata.Properties.Select(p => p.ColumnName));
             var sql = $"SELECT {columnList} FROM {_metadata.TableName}";
 
-            await using var connection = await _dbService.GetNewOpenConnectionAsync();
-            await using var command = new NpgsqlCommand(sql, connection);
-
-            await using var reader = await command.ExecuteReaderAsync();
-
-            while (await reader.ReadAsync())
+            var (connection, shouldDispose) = await GetConnectionAsync();
+            try
             {
-                results.Add(MapEntityFromReader(reader));
+                await using var command = new NpgsqlCommand(sql, connection, _externalTransaction);
+                await using var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync()) results.Add(MapEntityFromReader(reader));
+                return results;
             }
-
-            return results;
+            finally
+            {
+                if (shouldDispose) await connection.DisposeAsync();
+            }
         }
 
         public async Task<T?> GetByIdAsync(object id)
@@ -158,19 +210,25 @@ namespace Apolon.Core.ORM.Data
             var columnList = string.Join(", ", _metadata.Properties.Select(p => p.ColumnName));
             var sql = $"SELECT {columnList} FROM {_metadata.TableName} WHERE {_pk.ColumnName} = @id LIMIT 1";
 
-            await using var connection = await _dbService.GetNewOpenConnectionAsync();
-            await using var command = new NpgsqlCommand(sql, connection);
+            var (connection, shouldDispose) = await GetConnectionAsync();
 
-            command.Parameters.AddWithValue("id", id);
-
-            await using var reader = await command.ExecuteReaderAsync();
-
-            if (await reader.ReadAsync())
+            try
             {
-                return MapEntityFromReader(reader);
-            }
+                await using var command = new NpgsqlCommand(sql, connection, _externalTransaction);
 
-            return default;
+                command.Parameters.AddWithValue("id", id);
+
+                await using var reader = await command.ExecuteReaderAsync();
+
+                if (await reader.ReadAsync())
+                    return MapEntityFromReader(reader);
+
+                return default;
+            }
+            finally
+            {
+                if (shouldDispose) await connection.DisposeAsync();
+            }
         }
 
         public async Task<IEnumerable<T>> GetAsync(
@@ -184,36 +242,40 @@ namespace Apolon.Core.ORM.Data
             var sql = $"SELECT {columnList} FROM {_metadata.TableName}";
 
             if (!string.IsNullOrWhiteSpace(whereClause))
-            {
                 sql += $" WHERE {whereClause}";
-            }
 
             if (!string.IsNullOrWhiteSpace(orderBy))
-            {
                 sql += $" ORDER BY {orderBy}";
-            }
 
-            await using var connection = await _dbService.GetNewOpenConnectionAsync();
-            await using var command = new NpgsqlCommand(sql, connection);
+            var (connection, shouldDispose) = await GetConnectionAsync();
 
-            if (queryParams != null)
+            try
             {
-                var properties = queryParams.GetType().GetProperties();
-                foreach (var prop in properties)
+                await using var command = new NpgsqlCommand(sql, connection, _externalTransaction);
+
+                if (queryParams != null)
                 {
-                    var value = prop.GetValue(queryParams);
-                    command.Parameters.AddWithValue($"@{prop.Name}", value ?? DBNull.Value);
+                    var properties = queryParams.GetType().GetProperties();
+                    foreach (var prop in properties)
+                    {
+                        var value = prop.GetValue(queryParams);
+                        command.Parameters.AddWithValue($"@{prop.Name}", value ?? DBNull.Value);
+                    }
                 }
+
+                await using var reader = await command.ExecuteReaderAsync();
+
+                while (await reader.ReadAsync())
+                {
+                    results.Add(MapEntityFromReader(reader));
+                }
+
+                return results;
             }
-
-            await using var reader = await command.ExecuteReaderAsync();
-
-            while (await reader.ReadAsync())
+            finally
             {
-                results.Add(MapEntityFromReader(reader));
+                if (shouldDispose) await connection.DisposeAsync();
             }
-
-            return results;
         }
     }
 }
