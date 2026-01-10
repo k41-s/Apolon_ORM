@@ -1,5 +1,6 @@
 ﻿using Apolon.Core.ORM.Database;
 using Npgsql;
+using System.Data;
 
 namespace Apolon.Core.ORM.Data
 {
@@ -64,6 +65,31 @@ namespace Apolon.Core.ORM.Data
             }
         }
 
+        public async Task<int> ExecuteRawSqlAsync(string sql, object[]? parameters = null)
+        {
+            if (
+                _transaction == null ||
+                _connection == null ||
+                _connection.State != ConnectionState.Open
+            )
+            {
+                await BeginTransactionAsync();
+            }
+
+            await using (var command = new NpgsqlCommand(sql, _connection, _transaction))
+            {
+                try
+                {
+                    return await command.ExecuteNonQueryAsync();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error executing Raw SQL within UoW: {ex.Message}");
+                    throw; // so migration runner can call rollback
+                }
+            }
+        }
+
         public IGenericRepository<T> Repository<T>() where T : new()
         {
             EnsureConnectionOpenAsync().GetAwaiter().GetResult();
@@ -96,6 +122,6 @@ namespace Apolon.Core.ORM.Data
             _disposed = true;
             GC.SuppressFinalize(this);
         }
-
+        
     }
 }

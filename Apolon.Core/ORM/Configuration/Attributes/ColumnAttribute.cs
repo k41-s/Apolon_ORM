@@ -1,5 +1,4 @@
-﻿using System;
-
+﻿
 namespace Apolon.Core.ORM.Configuration.Attributes
 {
     [AttributeUsage(AttributeTargets.Property)]

@@ -12,5 +12,6 @@ namespace Apolon.Core.ORM.Data
         Task CommitAsync();
         Task RollbackAsync();
         IGenericRepository<T> Repository<T>() where T : new();
+        Task<int> ExecuteRawSqlAsync(string sql, object[] parameters = null);
     }
 }
