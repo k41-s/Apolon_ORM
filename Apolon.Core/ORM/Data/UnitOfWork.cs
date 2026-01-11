@@ -27,7 +27,8 @@ namespace Apolon.Core.ORM.Data
         public async Task BeginTransactionAsync()
         {
             await EnsureConnectionOpenAsync();
-            if (_transaction != null) throw new InvalidOperationException("Transaction already started.");
+            if (_transaction != null) 
+                return;
             _transaction = await _connection!.BeginTransactionAsync();
         }
 
@@ -67,14 +68,7 @@ namespace Apolon.Core.ORM.Data
 
         public async Task<int> ExecuteRawSqlAsync(string sql, object[]? parameters = null)
         {
-            if (
-                _transaction == null ||
-                _connection == null ||
-                _connection.State != ConnectionState.Open
-            )
-            {
-                await BeginTransactionAsync();
-            }
+            await EnsureConnectionOpenAsync();
 
             await using (var command = new NpgsqlCommand(sql, _connection, _transaction))
             {

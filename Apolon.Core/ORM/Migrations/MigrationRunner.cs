@@ -163,7 +163,17 @@ $@"-- MIGRATION: {fileName}
                     applied_on TIMESTAMP NOT NULL
                 );";
 
-            await _uow.ExecuteRawSqlAsync(checkSql);
+            try
+            {
+                await _uow.BeginTransactionAsync();
+                await _uow.ExecuteRawSqlAsync(checkSql);
+                await _uow.CommitAsync();
+            }
+            catch (Exception ex)
+            {
+                await _uow.RollbackAsync();
+                Console.WriteLine($"Warning: Failed to ensure tracking table exists: {ex.Message}");
+            }
         }
 
         private string ParseSection(string sql, string sectionName)

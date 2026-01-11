@@ -3,13 +3,27 @@ services:
     image: postgres:15-alpine
     restart: always
     ports:
-      - "5432:5432"
+      - "${POSTGRES_HOST_PORT_APP}:5432"
     environment:
-      POSTGRES_USER: apolon_user
-      POSTGRES_PASSWORD: apolon_password
-      POSTGRES_DB: apolon_db
+      POSTGRES_USER: ${POSTGRES_USER_APP}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_APP}
+      POSTGRES_DB: ${POSTGRES_DB_APP}
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
+  migration_db:
+    image: postgres:15-alpine
+    container_name: migration_db_container
+    restart: always
+    ports:
+      - "${POSTGRES_HOST_PORT_MIG}:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER_MIG}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD_MIG}
+      POSTGRES_DB: ${POSTGRES_DB_MIG}
+    volumes:
+      - migration_postgres_data:/var/lib/postgresql/data
+
 volumes:
   postgres_data:
+  migration_postgres_data:
