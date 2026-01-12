@@ -1,0 +1,54 @@
+﻿@model IEnumerable<Apolon.Core.Models.Prescription>
+
+<h1>Prescriptions Details (Relational Retrieval Demo)</h1>
+
+<p class="lead text-success">
+    Data for Patient and Medication is retrieved via a single SQL JOIN using the
+    <code>GetWithRelationsAsync</code> method.
+</p>
+<hr />
+
+<p>
+    <a asp-action="Create" class="btn btn-success">Issue New Prescription</a>
+</p>
+
+<table class="table table-bordered">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Dosage</th>
+            <th>Patient Name</th>
+            <th>Medication Name</th>
+            <th>Start Date</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@Html.DisplayFor(modelItem => item.Id)</td>
+                <td>@Html.DisplayFor(modelItem => item.Dosage)</td>
+
+                <td>
+                    @if (item.Patient != null)
+                    {
+                        @item.Patient.FirstName @item.Patient.LastName
+                    }
+                </td>
+
+                <td>
+                    @if (item.Medication != null)
+                    {
+                        @item.Medication.Name
+                    }
+                </td>
+
+                <td>@item.StartDate.ToShortDateString()</td>
+                <td>
+                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger">Delete</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

@@ -1,0 +1,36 @@
+﻿@model IEnumerable<Apolon.Core.Models.Checkup>
+
+<h1>Checkups History</h1>
+
+<p>
+    <a asp-action="Create" class="btn btn-success">Record New Checkup</a>
+</p>
+<table class="table">
+    <thead>
+        <tr>
+            <th>@Html.DisplayNameFor(model => model.Id)</th>
+            <th>Patient ID</th>
+            <th>@Html.DisplayNameFor(model => model.Date)</th>
+            <th>@Html.DisplayNameFor(model => model.CheckupType)</th>
+            <th>@Html.DisplayNameFor(model => model.Finding)</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@Html.DisplayFor(modelItem => item.Id)</td>
+                <td>@Html.DisplayFor(modelItem => item.PatientId)</td>
+                <td>@item.Date.ToShortDateString()</td>
+                <td>@Html.DisplayFor(modelItem => item.CheckupType)</td>
+                <td>@Html.DisplayFor(modelItem => item.Finding)</td>
+                <td>
+                    <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this checkup?')">
+                        Delete
+                    </a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

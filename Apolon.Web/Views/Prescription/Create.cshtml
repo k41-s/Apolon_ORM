@@ -1,0 +1,49 @@
+﻿@model Apolon.Core.Models.Prescription
+
+<h1>Create New Prescription</h1>
+<hr />
+
+<div class="row">
+    <div class="col-md-6">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="form-group">
+                <label asp-for="PatientId" class="control-label">Patient</label>
+                <select asp-for="PatientId" class="form-control" asp-items="@(new SelectList(ViewBag.Patients, "Id", "FullName"))">
+                    <option value="">-- Select Patient --</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="MedicationId" class="control-label">Medication</label>
+                <select asp-for="MedicationId" class="form-control" asp-items="@(new SelectList(ViewBag.Medications, "Id", "Name"))">
+                    <option value="">-- Select Medication --</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Dosage" class="control-label"></label>
+                <input asp-for="Dosage" class="form-control" />
+            </div>
+
+            <div class="form-group">
+                <label asp-for="StartDate" class="control-label"></label>
+                <input asp-for="StartDate" type="date" class="form-control" value="@DateTime.Today.ToString("yyyy-MM-dd")" />
+            </div>
+
+            <div class="form-group" style="margin-top: 20px;">
+                <input type="submit" value="Issue Prescription" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div style="margin-top: 20px;">
+    <a asp-action="Index">Back to Prescriptions List</a>
+</div>
+
+@{
+    // NOTE: You may need to add a "FullName" property to your Patient model
+    // (e.g., return $"{FirstName} {LastName}") for the SelectList above to work easily.
+}
