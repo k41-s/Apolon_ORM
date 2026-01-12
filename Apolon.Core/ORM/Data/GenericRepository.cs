@@ -303,5 +303,153 @@ namespace Apolon.Core.ORM.Data
                 if (shouldDispose) await connection.DisposeAsync();
             }
         }
+
+        public async Task<IEnumerable<T>> GetWithRelationsAsync(
+            string[] includeProperties,
+            string? whereClause = null,
+            object? queryParams = null
+        ) {
+            var results = new List<T>();
+
+            var (sql, relatedMetadataMap) = BuildSqlWithJoins(includeProperties, whereClause);
+
+            var (connection, shouldDispose) = await GetConnectionAsync();
+            try
+            {
+                await using var command = new NpgsqlCommand(
+                    sql, 
+                    connection, 
+                    _externalTransaction
+                );
+
+                if (queryParams != null)
+                {
+                    foreach (var prop in queryParams.GetType().GetProperties())
+                        command.Parameters.AddWithValue(
+                            $"@{prop.Name}", 
+                            prop.GetValue(queryParams) ?? DBNull.Value
+                        );
+                }
+
+                await using var reader = await command.ExecuteReaderAsync();
+
+                while (await reader.ReadAsync())
+                {
+                    var entity = MapEntityWithRelationsFromReader(
+                        reader, 
+                        includeProperties, 
+                        relatedMetadataMap
+                    );
+                    results.Add(entity);
+                }
+                return results;
+            }
+            finally
+            {
+                if (shouldDispose) await connection.DisposeAsync();
+            }
+        }
+
+        private (string Sql, Dictionary<string, ModelMetadata> RelatedMetadataMap) BuildSqlWithJoins(
+            string[] includeProperties,
+            string? whereClause
+        ) {
+            var mainTable = _metadata.TableName;
+            var selectColumns = new List<string>();
+            var joinClauses = new List<string>();
+            var relatedMetadataMap = new Dictionary<string, ModelMetadata>();
+
+            foreach (var p in _metadata.Properties)
+                selectColumns.Add($"{mainTable}.{p.ColumnName} AS {mainTable}_{p.ColumnName}");
+
+            foreach (var propName in includeProperties)
+            {
+                var propInfo = typeof(T).GetProperty(propName)
+                    ?? throw new ArgumentException($"Property {propName} not found on {typeof(T).Name}");
+
+                var relatedType = propInfo.PropertyType;
+                var relatedMetadata = ModelParser.GetMetadata(relatedType);
+                relatedMetadataMap.Add(propName, relatedMetadata);
+
+                var fkProp = _metadata.Properties.FirstOrDefault(p => p.PropertyName == $"{propName}Id");
+
+                if (fkProp == null)
+                    throw new InvalidOperationException($"Could not determine FK for navigation property {propName}. Convention failed.");
+
+                var relatedTable = relatedMetadata.TableName;
+                var relatedPk = relatedMetadata.Properties.First(p => p.IsPrimaryKey);
+
+                joinClauses.Add($"LEFT JOIN {relatedTable} ON {mainTable}.{fkProp.ColumnName} = {relatedTable}.{relatedPk.ColumnName}");
+
+                foreach (var rp in relatedMetadata.Properties)
+                    selectColumns.Add($"{relatedTable}.{rp.ColumnName} AS {relatedTable}_{rp.ColumnName}");
+            }
+
+            var sql = $"SELECT {string.Join(", ", selectColumns)} FROM {mainTable} {string.Join(" ", joinClauses)}";
+
+            if (!string.IsNullOrWhiteSpace(whereClause))
+                sql += $" WHERE {whereClause}";
+
+            return (sql, relatedMetadataMap);
+        }
+
+        private T MapEntityWithRelationsFromReader(
+            NpgsqlDataReader reader,
+            string[] includeProperties,
+            Dictionary<string, ModelMetadata> relatedMetadataMap
+        ) {
+            var mainTable = _metadata.TableName;
+
+            var entity = MapEntityFromAliasedReader(reader, _metadata, mainTable);
+
+            foreach (var propName in includeProperties)
+            {
+                var propInfo = typeof(T).GetProperty(propName)!;
+                var relatedType = propInfo.PropertyType;
+                var relatedMetadata = relatedMetadataMap[propName];
+                var relatedTable = relatedMetadata.TableName;
+
+                var pkColAlias = $"{relatedTable}_{relatedMetadata.Properties.First(p => p.IsPrimaryKey).ColumnName}";
+                var pkOrdinal = reader.GetOrdinal(pkColAlias);
+
+                if (!reader.IsDBNull(pkOrdinal))
+                {
+                    var relatedEntity = MapEntityFromAliasedReader(reader, relatedMetadata, relatedTable, relatedType);
+                    propInfo.SetValue(entity, relatedEntity);
+                }
+            }
+
+            return entity;
+        }
+
+        private T MapEntityFromAliasedReader(NpgsqlDataReader reader, ModelMetadata metadata, string tablePrefix)
+        {
+            return (T)MapEntityFromAliasedReader(reader, metadata, tablePrefix, typeof(T));
+        }
+
+        private object MapEntityFromAliasedReader(NpgsqlDataReader reader, ModelMetadata metadata, string tablePrefix, Type type)
+        {
+            var entity = Activator.CreateInstance(type)!;
+            foreach (var prop in metadata.Properties)
+            {
+                var alias = $"{tablePrefix}_{prop.ColumnName}";
+                try
+                {
+                    var ordinal = reader.GetOrdinal(alias);
+                    if (!reader.IsDBNull(ordinal))
+                    {
+                        var val = reader.GetValue(ordinal);
+                        var propInfo = type.GetProperty(prop.PropertyName)!;
+                        var targetType = Nullable.GetUnderlyingType(propInfo.PropertyType) ?? propInfo.PropertyType;
+                        propInfo.SetValue(entity, Convert.ChangeType(val, targetType));
+                    }
+                }
+                catch (IndexOutOfRangeException) 
+                { 
+                    /* Ignore missing columns */ 
+                }
+            }
+            return entity;
+        }
     }
 }

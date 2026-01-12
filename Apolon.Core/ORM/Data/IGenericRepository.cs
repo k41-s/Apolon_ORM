@@ -13,5 +13,10 @@ namespace Apolon.Core.ORM.Data
             object? queryParams = null, 
             string? orderBy = null
         );
+        Task<IEnumerable<T>> GetWithRelationsAsync(
+            string[] includeProperties,
+            string? whereClause = null,
+            object? queryParams = null
+        );
     }
 }
