@@ -26,11 +26,11 @@ namespace Apolon.Core.ORM.Migrations
 $@"-- MIGRATION: {fileName}
 
 -- UP
--- Write your APPLY logic here (e.g., CREATE TABLE, ALTER TABLE ADD COLUMN...)
+-- Replace this with your APPLY logic (e.g., CREATE TABLE, ALTER TABLE ADD COLUMN...)
 
 
 -- DOWN
--- Write your REVERT logic here (e.g., DROP TABLE, ALTER TABLE DROP COLUMN...)
+-- Replace this with your REVERT logic (e.g., DROP TABLE, ALTER TABLE DROP COLUMN...)
 
 ";
 
